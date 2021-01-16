@@ -1,0 +1,2 @@
+lidar_localization:message/gnss_pos:test_path
+-DCATKIN_DEVEL_PREFIX=/home/leiyubiao/ll/devel -DCMAKE_INSTALL_PREFIX=/home/leiyubiao/ll/install -G Unix Makefiles

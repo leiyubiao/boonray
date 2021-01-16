@@ -1,0 +1,77 @@
+/*
+ * @Description: 里程计信息发布
+ * @Author: Ren Qian
+ * @Date: 2020-02-06 21:11:44
+ */
+#include "lidar_localization/publisher/path_publisher.hpp"
+
+namespace lidar_localization
+{
+    PathPublisher::PathPublisher(ros::NodeHandle &nh,
+                                 std::string topic_name,
+                                 std::string base_frame_id,
+                                 std::string child_frame_id,
+                                 int buff_size)
+        : nh_(nh)
+    {
+
+        publisher_ = nh_.advertise<nav_msgs::Path>(topic_name, buff_size);
+        path_.header.frame_id = base_frame_id;
+    }
+
+    void PathPublisher::Publish(const std::deque<GNSSData> &gnss_data_buff, double time)
+    {
+        ros::Time ros_time((float)time);
+        PublishData(gnss_data_buff, ros_time);
+    }
+
+    void PathPublisher::Publish(const std::deque<GNSSData> &gnss_data_buff)
+    {
+        PublishData(gnss_data_buff, ros::Time::now());
+    }
+
+    void PathPublisher::PublishData(const std::deque<GNSSData> &gnss_data_buff, ros::Time time)
+    {
+        nav_msgs::Path path;
+        for (auto gnss_data : gnss_data_buff)
+        {
+            if (!gnss_data.origin_position_inited) //以最开始受收到的经纬度为原点建立局部笛卡尔坐标系
+            {
+                std::cout << "origin... lat=" << gnss_data.latitude << " lon=" << gnss_data.longitude << " alt=" << gnss_data.altitude << " heading=" << gnss_data.heading << std::endl;
+                gnss_data.InitOriginPosition(); //给这个类一个所有的对象一个原点
+                gnss_data.origin_position_inited = true;
+            }
+            gnss_data.GetOrientationMatrixFromYawAndLatLon();
+            Eigen::Matrix3f odometry_matrix = Eigen::Matrix3f::Identity(3, 3);
+            odometry_matrix = gnss_data.rotationMatrixFromYawAndLatLonFloat.block<3, 3>(0, 0);
+
+            Eigen::Quaternionf quaternion(odometry_matrix);
+
+            geometry_msgs::PoseStamped this_pose_stamped;
+            this_pose_stamped.pose.position.x = gnss_data.rotationMatrixFromYawAndLatLonFloat(0, 3);
+            this_pose_stamped.pose.position.y = gnss_data.rotationMatrixFromYawAndLatLonFloat(1, 3);
+            this_pose_stamped.pose.position.z = gnss_data.rotationMatrixFromYawAndLatLonFloat(2, 3);
+            this_pose_stamped.pose.orientation.x = quaternion.x();
+            this_pose_stamped.pose.orientation.y = quaternion.y();
+            this_pose_stamped.pose.orientation.z = quaternion.z();
+            this_pose_stamped.pose.orientation.w = quaternion.w();
+            this_pose_stamped.header.stamp = time;
+            this_pose_stamped.header.frame_id = path_.header.frame_id;
+            path.header.stamp = time;
+            path.poses.push_back(this_pose_stamped);
+        }
+        path.header.frame_id = path_.header.frame_id;
+        publisher_.publish(path);
+    }
+
+    void PathPublisher::PublishNavPath(nav_msgs::Path path)
+    {
+        path.header.frame_id=path_.header.frame_id;
+        publisher_.publish(path);
+    }
+
+    bool PathPublisher::HasSubscribers()
+    {
+        return publisher_.getNumSubscribers() != 0;
+    }
+} // namespace lidar_localization

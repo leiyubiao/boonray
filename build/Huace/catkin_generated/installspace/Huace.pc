@@ -1,0 +1,8 @@
+prefix=/home/leiyubiao/ll/install
+
+Name: Huace
+Description: Description of Huace
+Version: 0.0.0
+Cflags: -I${prefix}/include
+Libs: -L${prefix}/lib -lHuace
+Requires: roscpp message_runtime rospy std_msgs

@@ -1,0 +1,8 @@
+prefix=/home/leiyubiao/ll/devel
+
+Name: gnss_pos
+Description: Description of gnss_pos
+Version: 0.0.1
+Cflags: -I/home/leiyubiao/ll/devel/include
+Libs: -L${prefix}/lib 
+Requires: message_runtime
